@@ -10,9 +10,10 @@ import { useNavigate } from "react-router-dom";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [aba, setAba] = useState("login");
+  const [aba, setAba] = useState("login"); // 'login' | 'cadastro' | 'recuperar'
   const [mensagemErro, setMensagemErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const limparMensagens = () => {
@@ -20,62 +21,115 @@ export default function Auth() {
     setMensagemSucesso("");
   };
 
+  // Validação front
+  const emailValido = (e) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
+
+  const mapearErro = (code, contexto) => {
+    // contexto: 'login' | 'cadastro' | 'recuperar'
+    const comuns = {
+      "auth/invalid-email": "Formato de e-mail inválido.",
+      "auth/too-many-requests": "Muitas tentativas. Tente novamente mais tarde.",
+      "auth/network-request-failed": "Falha de rede. Verifique sua conexão.",
+    };
+
+    const porContexto = {
+      login: {
+        "auth/user-not-found": "E-mail ou senha incorretos.",
+        "auth/wrong-password": "E-mail ou senha incorretos.",
+        "auth/invalid-credential": "Credencial inválida. Verifique os dados.",
+      },
+      cadastro: {
+        "auth/email-already-in-use": "Este e-mail já está cadastrado.",
+        "auth/weak-password": "A senha deve ter pelo menos 6 caracteres.",
+      },
+      recuperar: {
+        "auth/user-not-found": "Nenhuma conta encontrada com este e-mail.",
+      },
+    };
+
+    // ordem: específicos do contexto → comuns → fallback
+    return (
+      porContexto[contexto]?.[code] ||
+      comuns[code] ||
+      "Ocorreu um erro inesperado. Tente novamente."
+    );
+  };
+
   const handleLogin = async () => {
     limparMensagens();
+
+    if (!emailValido(email)) {
+      setMensagemErro("Informe um e-mail válido.");
+      return;
+    }
+    if (!senha) {
+      setMensagemErro("Informe sua senha.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      navigate("/treinos");
+      await signInWithEmailAndPassword(auth, email.trim(), senha);
+      navigate("/dashboard");
     } catch (error) {
-      if (
-        error.code === "auth/user-not-found" ||
-        error.code === "auth/wrong-password"
-      ) {
-        setMensagemErro("E-mail ou senha incorretos.");
-      } else if (error.code === "auth/invalid-email") {
-        setMensagemErro("Formato de e-mail inválido.");
-      }
+      setMensagemErro(mapearErro(error.code, "login"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCadastro = async () => {
     limparMensagens();
+
+    if (!emailValido(email)) {
+      setMensagemErro("Formato de e-mail inválido.");
+      return;
+    }
+    if ((senha || "").length < 6) {
+      setMensagemErro("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, senha);
+      await createUserWithEmailAndPassword(auth, email.trim(), senha);
       setMensagemSucesso("Cadastro realizado com sucesso!");
       setTimeout(() => {
         setAba("login");
       }, 1500);
     } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        setMensagemErro("Este e-mail já está cadastrado.");
-      } else if (error.code === "auth/invalid-email") {
-        setMensagemErro("Formato de e-mail inválido.");
-      } else if (error.code === "auth/weak-password") {
-        setMensagemErro("A senha deve ter pelo menos 6 caracteres.");
-      }
+      setMensagemErro(mapearErro(error.code, "cadastro"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRecuperarSenha = async () => {
     limparMensagens();
+
+    if (!emailValido(email)) {
+      setMensagemErro("Informe um e-mail válido para recuperação.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       setMensagemSucesso("Link de redefinição enviado para o e-mail!");
       setTimeout(() => {
         setAba("login");
       }, 1500);
     } catch (error) {
-      if (error.code === "auth/user-not-found") {
-        setMensagemErro("Nenhuma conta encontrada com este e-mail.");
-      } else if (error.code === "auth/invalid-email") {
-        setMensagemErro("Formato de e-mail inválido.");
-      }
+      setMensagemErro(mapearErro(error.code, "recuperar"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const renderFormulario = () => (
     <div className="flex flex-col gap-2 w-full max-w-sm">
-      {(aba !== "recuperar") && (
+      {aba !== "recuperar" && (
         <>
           <input
             type="email"
@@ -123,9 +177,14 @@ export default function Auth() {
             ? handleCadastro
             : handleRecuperarSenha
         }
-        className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+        disabled={loading}
+        className={`${
+          loading ? "opacity-70 cursor-not-allowed" : ""
+        } bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700`}
       >
-        {aba === "login"
+        {loading
+          ? "Aguarde..."
+          : aba === "login"
           ? "Entrar"
           : aba === "cadastro"
           ? "Cadastrar"
