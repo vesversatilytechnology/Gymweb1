@@ -2,16 +2,24 @@ import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import useIsTrainer from "../hooks/useIsTrainer";
 
 export default function Dashboard() {
   const [treinos, setTreinos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [authUid, setAuthUid] = useState(null);
+  const [nome, setNome] = useState("");
 
-  // Só para treinador
-  const [alunoUidConsulta, setAlunoUidConsulta] = useState("");
+  // Só para o treinador consultar por e‑mail
+  const [alunoEmailConsulta, setAlunoEmailConsulta] = useState("");
   const [carregandoConsulta, setCarregandoConsulta] = useState(false);
 
   const navigate = useNavigate();
@@ -22,38 +30,38 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  // Captura o UID do usuário logado (treinador ou aluno)
+  // Captura UID e carrega o nome do perfil
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         navigate("/");
       } else {
         setAuthUid(user.uid);
+        try {
+          const snap = await getDoc(doc(db, "profiles", user.uid));
+          if (snap.exists()) setNome(snap.data().nome || "");
+        } catch (e) {
+          console.error("Erro lendo profile:", e);
+        }
       }
     });
     return () => unsub();
-    // eslint-disable-next-line
-  }, []);
+  }, [navigate]);
 
-  // Carrega treinos do ALUNO (do próprio usuário se for aluno comum)
+  // Decide o que carregar conforme o papel
   useEffect(() => {
-    // aguarda saber o papel
     if (loadingRole) return;
-
-    // Se não autenticado ainda, espera
     if (!authUid) return;
 
-    // Aluno comum → carrega os treinos dele automaticamente
     if (!isTrainer) {
-      carregarTreinos(authUid);
+      carregarTreinos(authUid); // aluno comum
     } else {
-      // Treinador → não carrega nada até escolher um aluno
-      setTreinos([]);
+      setTreinos([]); // treinador espera consulta
       setLoading(false);
     }
-    // eslint-disable-next-line
   }, [authUid, isTrainer, loadingRole]);
 
+  // Carrega treinos de um UID específico (aluno)
   const carregarTreinos = async (uid) => {
     setLoading(true);
     try {
@@ -81,7 +89,6 @@ export default function Dashboard() {
           });
         }
 
-        // Ordena treinos por ordem se existir
         listaTreinos.sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
         setTreinos(listaTreinos);
       } else {
@@ -98,7 +105,6 @@ export default function Dashboard() {
   const buildEmbed = (videoId) =>
     `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
 
-  // UI de carregamento (papel ou dados)
   if (loadingRole || loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-900 text-white">
@@ -110,40 +116,76 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-3xl mx-auto">
+        {/* Saudação */}
+        <div className="mb-2 text-gray-300">
+          {nome ? <>Olá, <span className="font-semibold">{nome}</span> 👋</> : "Olá 👋"}
+        </div>
+
         <h1 className="text-3xl font-bold mb-6">Meus Treinos</h1>
 
-        {/* Painel do treinador */}
+        {/* Painel visível só para treinador */}
         {isTrainer && (
           <div className="bg-gray-800 p-4 rounded mb-6">
-            <div className="text-sm text-gray-300 mb-2">
-              Você está logado como <span className="font-semibold">treinador</span>.
-            </div>
-            <label className="block text-sm mb-1">
-              Consultar treinos de um aluno (cole o UID do aluno)
-            </label>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 p-2 rounded text-black"
-                placeholder="UID do aluno (Authentication → Users)"
-                value={alunoUidConsulta}
-                onChange={(e) => setAlunoUidConsulta(e.target.value)}
-              />
-              <button
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
-                onClick={async () => {
-                  if (!alunoUidConsulta.trim()) return;
-                  setCarregandoConsulta(true);
-                  await carregarTreinos(alunoUidConsulta.trim());
-                  setCarregandoConsulta(false);
-                }}
-              >
-                {carregandoConsulta ? "Carregando..." : "Carregar"}
-              </button>
-            </div>
-          </div>
+      <div className="text-sm text-gray-300 mb-2">
+        Você está logado como <span className="font-semibold">treinador</span>.
+      </div>
+
+      <label className="block text-sm mb-1">
+        Consultar treinos de um aluno (e‑mail)
+      </label>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 p-2 rounded text-black"
+          placeholder="aluno@exemplo.com"
+          value={alunoEmailConsulta}
+          onChange={(e) => setAlunoEmailConsulta(e.target.value)}
+        />
+        <button
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+          onClick={async () => {
+            const emailLower = (alunoEmailConsulta || "").trim().toLowerCase();
+            if (!emailLower) return;
+
+            setCarregandoConsulta(true);
+            try {
+              // 1) emailLower
+              let perfQ = query(
+                collection(db, "profiles"),
+                where("emailLower", "==", emailLower)
+              );
+              let snap = await getDocs(perfQ);
+
+              // 2) fallback email exato
+              if (snap.empty) {
+                perfQ = query(
+                  collection(db, "profiles"),
+                  where("email", "==", alunoEmailConsulta.trim())
+                );
+                snap = await getDocs(perfQ);
+              }
+
+              if (!snap.empty) {
+                const uid = snap.docs[0].data().uid;
+                await carregarTreinos(uid);
+              } else {
+                setTreinos([]);
+                alert("Não encontrei perfil com esse e‑mail. Peça ao aluno para se cadastrar no app.");
+              }
+            } catch (e) {
+              console.error("consulta treinador:", e);
+              setTreinos([]);
+              alert("Erro ao consultar. Veja o console.");
+            }
+            setCarregandoConsulta(false);
+          }}
+        >
+          {carregandoConsulta ? "Carregando..." : "Carregar"}
+        </button>
+      </div>
+    </div>
         )}
 
-        {/* Lista de treinos (aluno ou consulta do treinador) */}
+        {/* Lista de treinos */}
         {treinos.length === 0 && (
           <p className="text-gray-400">Nenhum treino encontrado.</p>
         )}
@@ -154,7 +196,7 @@ export default function Dashboard() {
             <p className="text-gray-400 mb-4">{treino.descricao}</p>
 
             {(() => {
-              // Agrupar por grupo muscular
+              // Agrupa exercícios por grupo muscular
               const grupos = {};
               treino.exercicios.forEach((ex) => {
                 const g = (ex.grupo || "Outros").trim();
@@ -177,9 +219,7 @@ export default function Dashboard() {
                         key={ex.id}
                         className="bg-gray-800 p-4 rounded mb-4 shadow-md"
                       >
-                        <h4 className="text-lg font-semibold mb-1">
-                          {ex.nome}
-                        </h4>
+                        <h4 className="text-lg font-semibold mb-1">{ex.nome}</h4>
                         <p className="mb-2 text-gray-300">Séries: {ex.series}</p>
 
                         {ex.videoId && (
@@ -193,6 +233,10 @@ export default function Dashboard() {
                             />
                           </div>
                         )}
+
+                        <button className="bg-green-600 px-4 py-2 rounded hover:bg-green-700">
+                          Concluir exercício
+                        </button>
                       </div>
                     ))}
                 </div>

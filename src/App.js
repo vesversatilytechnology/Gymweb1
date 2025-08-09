@@ -1,21 +1,44 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import AdminCatalog from "./pages/AdminCatalog";
+import Home from "./pages/Home";              // você já tem
+import AdminCatalog from "./pages/AdminCatalog"; // se usa
 import AdminTreinos from "./pages/AdminTreinos";
-import AdminRoute from "./components/AdminRoute"; // protege rotas de admin
+import AdminAlunos from "./pages/AdminAlunos";
 
-function App() {
+import AdminRoute from "./components/AdminRoute";
+
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login / Registro */}
+        {/* Público / aluno */}
         <Route path="/" element={<Auth />} />
-
-        {/* Dashboard normal */}
+        <Route path="/home" element={<Home />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Rotas protegidas para treinador */}
+        {/* Admin: lista de alunos */}
+        <Route
+          path="/admin/alunos"
+          element={
+            <AdminRoute>
+              <AdminAlunos />
+            </AdminRoute>
+          }
+        />
+
+        {/* Admin: cadastro de treino para aluno selecionado */}
+        <Route
+          path="/admin/treinos/:uid"
+          element={
+            <AdminRoute>
+              <AdminTreinos />
+            </AdminRoute>
+          }
+        />
+
+        {/* (opcional) Admin: catálogo de exercícios */}
         <Route
           path="/admin/catalog"
           element={
@@ -24,17 +47,10 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route
-          path="/admin/treinos"
-          element={
-            <AdminRoute>
-              <AdminTreinos />
-            </AdminRoute>
-          }
-        />
+
+        {/* fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;
