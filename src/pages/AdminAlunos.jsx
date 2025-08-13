@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { signOut } from "firebase/auth";
+import { db, auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { ADMIN_MASTER_EMAIL } from "../config";
 
 export default function AdminAlunos() {
   const navigate = useNavigate();
@@ -13,12 +15,36 @@ export default function AdminAlunos() {
   const [pagina, setPagina] = useState(1);
   const ITENS_POR_PAGINA = 10;
 
+  const [nomePersonal, setNomePersonal] = useState("");
+  const [isMaster, setIsMaster] = useState(false);
+
+  // ==== saudação / master flag
+  useEffect(() => {
+    const run = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      setIsMaster((user.email || "").toLowerCase() === ADMIN_MASTER_EMAIL.toLowerCase());
+
+      // tenta pegar nome do profile
+      let nome = "";
+      try {
+        const perf = await getDoc(doc(db, "profiles", user.uid));
+        if (perf.exists()) nome = perf.data()?.nome || perf.data()?.nomeCompleto || "";
+      } catch (_) {}
+      if (!nome) nome = user.displayName || user.email || "Personal";
+      setNomePersonal(nome);
+    };
+    run();
+  }, []);
+
+  // ==== carrega alunos
   useEffect(() => {
     const carregar = async () => {
       setCarregando(true);
       try {
-        // 1) Tenta perfis em profiles/
         let lista = [];
+        // 1) profiles
         const perfis = await getDocs(collection(db, "profiles"));
         if (!perfis.empty) {
           lista = perfis.docs.map((d) => {
@@ -37,7 +63,7 @@ export default function AdminAlunos() {
             };
           });
         } else {
-          // 2) Fallback: users/
+          // 2) fallback users
           const users = await getDocs(collection(db, "users"));
           lista = users.docs.map((d) => {
             const x = d.data() || {};
@@ -52,8 +78,6 @@ export default function AdminAlunos() {
             };
           });
         }
-
-        // Ordena por nome
         lista.sort((a, b) => a.nomeLower.localeCompare(b.nomeLower, "pt-BR"));
         setAlunos(lista);
       } catch (e) {
@@ -79,14 +103,48 @@ export default function AdminAlunos() {
 
   const irParaCadastro = (uid) => navigate(`/admin/treinos/${uid}`);
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Alunos</h1>
+        {/* Topo: saudação + ações */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">Alunos</h1>
+            <p className="text-gray-300 mt-1">
+              Bem‑vindo, <span className="font-semibold">Personal {nomePersonal}</span>
+            </p>
+          </div>
 
-        {/* Busca com ícone de lupa (SVG inline) */}
+          <div className="flex gap-2">
+            {isMaster && (
+              <button
+                onClick={() => navigate("/admin/console")}
+                className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
+                title="Console do administrador"
+              >
+                Console de Usuários
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+              title="Encerrar sessão"
+            >
+              Sair
+            </button>
+          </div>
+        </div>
+
+        {/* Busca */}
         <div className="bg-gray-800 p-4 rounded mb-4">
-          <label className="block text-sm mb-2">Procure aqui o e‑mail do seu aluno</label>
+          <label className="block text-sm mb-2">
+            Procure aqui o e‑mail do seu aluno
+          </label>
           <div className="relative">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -112,6 +170,7 @@ export default function AdminAlunos() {
           </div>
         </div>
 
+        {/* Tabela */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm border border-gray-700">
             <thead>

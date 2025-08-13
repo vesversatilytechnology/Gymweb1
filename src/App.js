@@ -1,24 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
 import Auth from "./pages/Auth";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Home from "./pages/Home";              // você já tem
-import AdminCatalog from "./pages/AdminCatalog"; // se usa
-import AdminTreinos from "./pages/AdminTreinos";
 import AdminAlunos from "./pages/AdminAlunos";
-
+import AdminCatalog from "./pages/AdminCatalog";
+import AdminTreinos from "./pages/AdminTreinos";
 import AdminRoute from "./components/AdminRoute";
+import Timer from "./pages/Timer";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Público / aluno */}
+        {/* público */}
         <Route path="/" element={<Auth />} />
         <Route path="/home" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Admin: lista de alunos */}
+        {/* aluno */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/timer" element={<Timer />} />
+
+        {/* treinador */}
         <Route
           path="/admin/alunos"
           element={
@@ -27,23 +29,19 @@ export default function App() {
             </AdminRoute>
           }
         />
-
-        {/* Admin: cadastro de treino para aluno selecionado */}
-        <Route
-          path="/admin/treinos/:uid"
-          element={
-            <AdminRoute>
-              <AdminTreinos />
-            </AdminRoute>
-          }
-        />
-
-        {/* (opcional) Admin: catálogo de exercícios */}
         <Route
           path="/admin/catalog"
           element={
             <AdminRoute>
               <AdminCatalog />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/treinos/:uid"
+          element={
+            <AdminRoute>
+              <AdminTreinos />
             </AdminRoute>
           }
         />

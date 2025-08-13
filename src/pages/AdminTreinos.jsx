@@ -27,7 +27,7 @@ export default function AdminTreinos() {
   const [treinos, setTreinos] = useState([]); // [{id, titulo, descricao, ordem, criadoEm}]
   const [carregandoTreinos, setCarregandoTreinos] = useState(true);
 
-   // -----Treino selecionado (edição) -----
+  // -----Treino selecionado (edição) -----
   const [treinoId, setTreinoId] = useState("novo"); // "novo" | id existente
 
   // ----- Form do treino -----
@@ -92,19 +92,19 @@ export default function AdminTreinos() {
 
   // ===================== Carregar treinos do aluno =====================
   const carregarTreinos = useCallback(async () => {
-  setCarregandoTreinos(true);
-  try {
-    const ref = collection(db, "users", uid, "treinos");
-    const q = query(ref, orderBy("criadoEm", "desc"));
-    const snap = await getDocs(q);
-    const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    setTreinos(lista);
-  } catch (e) {
-    console.error("Erro carregando treinos:", e);
-  } finally {
-    setCarregandoTreinos(false);
-  }
-}, [uid]);
+    setCarregandoTreinos(true);
+    try {
+      const ref = collection(db, "users", uid, "treinos");
+      const q = query(ref, orderBy("criadoEm", "desc"));
+      const snap = await getDocs(q);
+      const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTreinos(lista);
+    } catch (e) {
+      console.error("Erro carregando treinos:", e);
+    } finally {
+      setCarregandoTreinos(false);
+    }
+  }, [uid]);
 
   useEffect(() => {
     if (uid) carregarTreinos();
@@ -205,6 +205,8 @@ export default function AdminTreinos() {
           titulo: titulo.trim(),
           descricao: (descricao || "").trim(),
         });
+        // Recarrega a lista para refletir o novo título na coluna esquerda
+        await carregarTreinos();
       }
 
       // deletar exercícios removidos
@@ -331,9 +333,8 @@ export default function AdminTreinos() {
                 <h2 className="text-lg font-semibold">Treinos do aluno</h2>
                 <button
                   onClick={() => setTreinoId("novo")}
-                  className={`px-3 py-1 rounded ${
-                    treinoId === "novo" ? "bg-green-700" : "bg-green-600 hover:bg-green-700"
-                  }`}
+                  className={`px-3 py-1 rounded ${treinoId === "novo" ? "bg-green-700" : "bg-green-600 hover:bg-green-700"
+                    }`}
                 >
                   + Novo
                 </button>
@@ -348,9 +349,8 @@ export default function AdminTreinos() {
                   {treinos.map((t) => (
                     <li
                       key={t.id}
-                      className={`p-2 cursor-pointer rounded ${
-                        treinoId === t.id ? "bg-gray-700" : "hover:bg-gray-800"
-                      }`}
+                      className={`p-2 cursor-pointer rounded ${treinoId === t.id ? "bg-gray-700" : "hover:bg-gray-800"
+                        }`}
                       onClick={() => setTreinoId(t.id)}
                     >
                       <div className="font-medium">{t.titulo || "(Sem título)"}</div>
