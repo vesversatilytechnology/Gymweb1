@@ -18,7 +18,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev:wifi": "PORT=3000 HOST=0.0.0.0 react-scripts start",
+    "dev:wifi:clean": "bash -lc 'p=$(lsof -ti :3000); [ -n \"$p\" ] && kill -9 $p || true; PORT=3000 HOST=0.0.0.0 npm start'"
   },
   "eslintConfig": {
     "extends": [
@@ -44,5 +46,8 @@
     "npm": "^11.5.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.1"
+  },
+  "engines": {
+    "node": "^20"
   }
 }
