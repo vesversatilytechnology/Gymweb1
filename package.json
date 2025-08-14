@@ -20,7 +20,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev:wifi": "PORT=3000 HOST=0.0.0.0 react-scripts start",
-    "dev:wifi:clean": "bash -lc 'p=$(lsof -ti :3000); [ -n \"$p\" ] && kill -9 $p || true; PORT=3000 HOST=0.0.0.0 npm start'"
+    "dev:wifi:clean": "bash -lc 'p=$(lsof -ti :3000); [ -n \"$p\" ] && kill -9 $p || true; PORT=3000 HOST=0.0.0.0 npm start'",
+    "start:mobile": "cross-env HOST=0.0.0.0 PORT=3000 react-scripts start"
   },
   "eslintConfig": {
     "extends": [
