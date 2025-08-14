@@ -75,16 +75,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
+    <div className="min-h-screen bg-gray-900 text-white p-4 pt-safe">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Início</h1>
-          <button
-            onClick={sair}
-            className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded"
-          >
-            Sair
-          </button>
         </div>
 
         <div className="bg-gray-800 p-4 rounded mt-4">
@@ -95,7 +89,7 @@ export default function Home() {
             Aqui você acompanha seus treinos do dia e volta para o painel.
           </p>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-3 rounded bg-slate-800/80">
             <button
               onClick={() => navigate("/dashboard")}
               className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
