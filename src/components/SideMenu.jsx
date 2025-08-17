@@ -41,6 +41,15 @@ export default function SideMenu() {
   const name = profile?.nome || user?.displayName || user?.email || "Usuário";
   const photo = user?.photoURL;
 
+  // ——— Início para todos (aponta para /home, não para /)
+  const commonItems = [
+    {
+      to: "/home",
+      label: "Início",
+      icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10",
+    },
+  ];
+
   // ——— Itens do aluno
   const alunoItems = [
     { to: "/profile", label: "Perfil", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zm6 13a8 8 0 10-16 0h16z" },
@@ -56,15 +65,18 @@ export default function SideMenu() {
     { to: "/admin/treinos/uid-exemplo", label: "Treinos (atalho)", icon: "M9 12l2 2 4-4" },
   ];
 
-  const items = role === "trainer" ? [...alunoItems, ...adminItems] : alunoItems;
+  // ——— Lista final (apenas UMA declaração!)
+  const items =
+    role === "trainer"
+      ? [...commonItems, ...alunoItems, ...adminItems]
+      : [...commonItems, ...alunoItems];
 
   const handleLogout = async () => {
     await signOut(auth);
     setOpen(false);
-    navigate("/");
+    navigate("/"); // volta para login
   };
 
-  // helper para fechar o menu ao navegar
   const NavItem = ({ to, label, icon }) => (
     <Link
       to={to}
@@ -81,17 +93,16 @@ export default function SideMenu() {
       {/* Botão flutuante (canto superior esquerdo) */}
       <button
         onClick={() => setOpen(true)}
-        aria-label="Abrir menu" 
+        aria-label="Abrir menu"
         className="fixed z-50 flex items-center justify-center rounded-full shadow-lg bg-indigo-600 text-white hover:bg-indigo-500
-                  /* tamanhos diferentes mobile/desktop */ w-11 h-11 p-2 sm:w-12 sm:h-12 sm:p-3
-                  /* posicionamento respeitando safe-area do iOS */ left-[calc(env(safe-area-inset-left,0px)+12px)]
-                  top-[calc(env(safe-area-inset-top,0px)+12px)]" 
+                  w-11 h-11 p-2 sm:w-12 sm:h-12 sm:p-3
+                  left-[calc(env(safe-area-inset-left,0px)+12px)]
+                  top-[calc(env(safe-area-inset-top,0px)+12px)]"
         style={{
-            left: 'max(1rem, env(safe-area-inset-left, 0px))',
-            top:  'max(1rem, env(safe-area-inset-top, 0px))',
-        }} 
+          left: "max(1rem, env(safe-area-inset-left, 0px))",
+          top: "max(1rem, env(safe-area-inset-top, 0px))",
+        }}
       >
-        {/* Ícone de menu (três linhas) */}
         <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

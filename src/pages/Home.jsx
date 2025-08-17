@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { auth, db } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 
@@ -16,23 +16,20 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [treinos, setTreinos] = useState([]);
-  const [concluidosHoje, setConcluidosHoje] = useState([]); // [{id, titulo}]
+  const [concluidosHoje, setConcluidosHoje] = useState([]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) return navigate("/");
       setUser(u);
 
-      // perfil (se você grava em profiles/)
-      let nome = "";
+      // perfil
       try {
         const perfDoc = await getDoc(doc(db, "profiles", u.uid));
         if (perfDoc.exists()) {
-          const p = perfDoc.data() || {};
-          nome = p.nome || p.nomeCompleto || "";
-          setPerfil(p);
+          setPerfil(perfDoc.data() || {});
         }
-      } catch (_) {}
+      } catch {}
 
       // carrega treinos
       const lista = [];
@@ -40,18 +37,15 @@ export default function Home() {
       for (const t of snap.docs) {
         const data = t.data() || {};
         const exSnap = await getDocs(collection(t.ref, "exercicios"));
-        const totalEx = exSnap.size;
-        lista.push({ id: t.id, titulo: data.titulo || "Treino", totalEx });
+        lista.push({ id: t.id, titulo: data.titulo || "Treino", totalEx: exSnap.size });
       }
       setTreinos(lista);
 
-      // verifica progresso de hoje
+      // progresso de hoje
       const pid = todayId();
       const finalizados = [];
       for (const t of lista) {
-        const progDoc = await getDoc(
-          doc(db, "users", u.uid, "treinos", t.id, "progresso", pid)
-        );
+        const progDoc = await getDoc(doc(db, "users", u.uid, "treinos", t.id, "progresso", pid));
         if (progDoc.exists()) {
           const doneArr = progDoc.data().done || [];
           if (t.totalEx > 0 && doneArr.length === t.totalEx) {
@@ -68,11 +62,6 @@ export default function Home() {
     const raw = perfil?.nome || user?.email || "";
     return (raw || "").split(" ")[0];
   }, [perfil, user]);
-
-  const sair = async () => {
-    await signOut(auth);
-    navigate("/");
-  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 pt-safe">
@@ -105,7 +94,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Status de conclusão de hoje */}
         <div className="bg-gray-800 p-4 rounded mt-4">
           <h2 className="text-xl font-semibold mb-2">Status de hoje</h2>
 
@@ -116,9 +104,7 @@ export default function Home() {
           {treinos.length > 0 && (
             <>
               {concluidosHoje.length === 0 ? (
-                <p className="text-gray-300">
-                  Nenhum treino concluído ainda hoje.
-                </p>
+                <p className="text-gray-300">Nenhum treino concluído ainda hoje.</p>
               ) : (
                 <ul className="list-disc pl-6 space-y-1">
                   {concluidosHoje.map((t) => (
