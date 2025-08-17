@@ -3,7 +3,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { db, auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
-import { ADMIN_MASTER_EMAIL } from "../config";
+import { ADMIN_MASTER_EMAILS } from "../config";
 
 export default function AdminAlunos() {
   const navigate = useNavigate();
@@ -24,14 +24,14 @@ export default function AdminAlunos() {
       const user = auth.currentUser;
       if (!user) return;
 
-      setIsMaster((user.email || "").toLowerCase() === ADMIN_MASTER_EMAIL.toLowerCase());
+      setIsMaster((user.email || "").toLowerCase() === ADMIN_MASTER_EMAILS.toLowerCase());
 
       // tenta pegar nome do profile
       let nome = "";
       try {
         const perf = await getDoc(doc(db, "profiles", user.uid));
         if (perf.exists()) nome = perf.data()?.nome || perf.data()?.nomeCompleto || "";
-      } catch (_) {}
+      } catch (_) { }
       if (!nome) nome = user.displayName || user.email || "Personal";
       setNomePersonal(nome);
     };

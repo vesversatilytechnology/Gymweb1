@@ -23,7 +23,12 @@ export default function useSession() {
         getDoc(doc(db, "userRoles", u.uid)),
         getDoc(doc(db, "profiles", u.uid)),
       ]);
-      setRole(roleSnap.exists() ? roleSnap.data()?.role ?? "student" : "student");
+
+      const roleValue = roleSnap.exists()
+        ? String(roleSnap.data()?.role || "student").toLowerCase()
+        : "student";
+
+      setRole(roleValue);
       setProfile(profileSnap.exists() ? profileSnap.data() : null);
       setLoading(false);
     });
