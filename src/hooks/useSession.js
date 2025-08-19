@@ -1,38 +1,80 @@
+// src/hooks/useSession.js
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 /** Retorna { user, role: "trainer"|"student"|null, profile, loading } */
 export default function useSession() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => auth.currentUser);
   const [role, setRole] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  // carregamento controlado por "duas metades": role e profile
+  const [roleLoaded, setRoleLoaded] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const loading = !(roleLoaded && profileLoaded);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    let unsubRole = null;
+    let unsubProfile = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
+
+      // limpa listeners antigos
+      unsubRole?.();
+      unsubProfile?.();
+
       if (!u) {
         setRole(null);
         setProfile(null);
-        setLoading(false);
+        setRoleLoaded(true);
+        setProfileLoaded(true);
         return;
       }
-      const [roleSnap, profileSnap] = await Promise.all([
-        getDoc(doc(db, "userRoles", u.uid)),
-        getDoc(doc(db, "profiles", u.uid)),
-      ]);
 
-      const roleValue = roleSnap.exists()
-        ? String(roleSnap.data()?.role || "student").toLowerCase()
-        : "student";
+      // preparando para carregar novamente
+      setRoleLoaded(false);
+      setProfileLoaded(false);
 
-      setRole(roleValue);
-      setProfile(profileSnap.exists() ? profileSnap.data() : null);
-      setLoading(false);
+      // ROLE: default "student" se não existir / erro
+      unsubRole = onSnapshot(
+        doc(db, "userRoles", u.uid),
+        (snap) => {
+          const value = snap.exists()
+            ? String(snap.data()?.role || "student").toLowerCase()
+            : "student";
+          setRole(value);
+          setRoleLoaded(true);
+        },
+        (err) => {
+          console.warn("[useSession] userRoles onSnapshot:", err?.message || err);
+          setRole("student");
+          setRoleLoaded(true);
+        }
+      );
+
+      // PROFILE: atualiza ao vivo (foto, nome, etc.)
+      unsubProfile = onSnapshot(
+        doc(db, "profiles", u.uid),
+        (snap) => {
+          setProfile(snap.exists() ? snap.data() : null);
+          setProfileLoaded(true);
+        },
+        (err) => {
+          console.warn("[useSession] profiles onSnapshot:", err?.message || err);
+          setProfile(null);
+          setProfileLoaded(true);
+        }
+      );
     });
-    return () => unsub();
+
+    return () => {
+      unsubAuth();
+      unsubRole?.();
+      unsubProfile?.();
+    };
   }, []);
 
   return { user, role, profile, loading };
