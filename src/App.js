@@ -1,3 +1,4 @@
+// src/App.js
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
@@ -9,12 +10,16 @@ import AdminRoute from "./components/AdminRoute";
 import SideMenu from "./components/SideMenu";
 import Timer from "./pages/Timer";
 import Profile from "./pages/Profile";
+import ProfilePhoto from "./pages/ProfilePhoto";
+import ChangePassword from "./pages/ChangePassword";
 import Biometria from "./pages/Biometria";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <SideMenu />  {/* <-- novo: aparece em todas as telas logadas */}
+      {/* Mostra o menu em todas as telas logadas */}
+      <SideMenu />
+
       <Routes>
         {/* público */}
         <Route path="/" element={<Auth />} />
@@ -24,9 +29,9 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/timer" element={<Timer />} />
          <Route path="/profile" element={<Profile />} />
-         <Route path="/ficha-biometrica" element={<Biometria />} />
 
         {/* placeholders (aluno) */}
+        <Route path="/ficha-biometrica" element={<div className="p-6 text-white">Ficha biométrica (em breve)</div>} />
         <Route path="/pagamentos" element={<div className="p-6 text-white">Pagamentos (em breve)</div>} />
 
         {/* treinador */}

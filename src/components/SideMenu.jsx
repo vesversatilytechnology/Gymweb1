@@ -15,12 +15,13 @@ function Icon({ d, className = "w-5 h-5" }) {
 
 export default function SideMenu() {
   const [open, setOpen] = useState(false);
+  const [imgError, setImgError] = useState(false); // 👈 mover para cima resolve a regra
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, role, profile } = useSession() || {};
 
-  // mostra menu apenas logado e fora do "/"
   const shouldShow = !!user && pathname !== "/";
+
   useEffect(() => {
     if (!shouldShow || !open) return;
     const onEsc = (e) => e.key === "Escape" && setOpen(false);
@@ -36,45 +37,32 @@ export default function SideMenu() {
     };
   }, [open, shouldShow]);
 
-  if (!shouldShow) return null;
+  if (!shouldShow) return null; // ✅ agora não há hooks depois deste return
 
   const name = profile?.nome || user?.displayName || user?.email || "Usuário";
-  const photo = user?.photoURL;
+  const avatarUrl = !imgError ? (profile?.photoUrl || user?.photoURL || "") : "";
+  const fallbackLetter = (name?.trim()?.[0] || "U").toUpperCase();
 
-  // ——— Início para todos (aponta para /home, não para /)
   const commonItems = [
-    {
-      to: "/home",
-      label: "Início",
-      icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10",
-    },
+    { to: "/home", label: "Início", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10" },
   ];
-
-  // ——— Itens do aluno
   const alunoItems = [
     { to: "/profile", label: "Perfil", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zm6 13a8 8 0 10-16 0h16z" },
     { to: "/dashboard", label: "Exercícios", icon: "M6 12h12M6 8h12M6 16h8" },
     { to: "/ficha-biometrica", label: "Ficha biométrica", icon: "M4 7h16M4 17h16M7 7v10M17 7v10" },
     { to: "/pagamentos", label: "Pagamentos", icon: "M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" },
   ];
-
-  // ——— Itens extras do treinador
   const adminItems = [
     { to: "/admin/alunos", label: "Alunos", icon: "M16 11V7a4 4 0 10-8 0v4M5 20h14a2 2 0 002-2v-6H3v6a2 2 0 002 2z" },
     { to: "/admin/catalog", label: "Gerenciar exercícios", icon: "M12 6v12m6-6H6" },
     { to: "/admin/treinos/uid-exemplo", label: "Treinos (atalho)", icon: "M9 12l2 2 4-4" },
   ];
-
-  // ——— Lista final (apenas UMA declaração!)
-  const items =
-    role === "trainer"
-      ? [...commonItems, ...alunoItems, ...adminItems]
-      : [...commonItems, ...alunoItems];
+  const items = role === "trainer" ? [...commonItems, ...alunoItems, ...adminItems] : [...commonItems, ...alunoItems];
 
   const handleLogout = async () => {
     await signOut(auth);
     setOpen(false);
-    navigate("/"); // volta para login
+    navigate("/");
   };
 
   const NavItem = ({ to, label, icon }) => (
@@ -90,7 +78,7 @@ export default function SideMenu() {
 
   return (
     <>
-      {/* Botão flutuante (canto superior esquerdo) */}
+      {/* Botão flutuante */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Abrir menu"
@@ -125,11 +113,16 @@ export default function SideMenu() {
       >
         {/* header com perfil */}
         <div className="p-5 pb-4 border-b border-white/10 flex items-center gap-4 pt-safe">
-          {photo ? (
-            <img src={photo} alt="Foto" className="w-12 h-12 rounded-full object-cover" />
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Foto"
+              className="w-12 h-12 rounded-full object-cover"
+              onError={() => setImgError(true)}
+            />
           ) : (
             <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold">
-              {name.slice(0, 1).toUpperCase()}
+              {fallbackLetter}
             </div>
           )}
           <div className="min-w-0">
