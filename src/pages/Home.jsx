@@ -29,7 +29,7 @@ export default function Home() {
         if (perfDoc.exists()) {
           setPerfil(perfDoc.data() || {});
         }
-      } catch {}
+      } catch { }
 
       // carrega treinos
       const lista = [];
@@ -43,17 +43,22 @@ export default function Home() {
 
       // progresso de hoje
       const pid = todayId();
-      const finalizados = [];
+      const comProgresso = [];
       for (const t of lista) {
         const progDoc = await getDoc(doc(db, "users", u.uid, "treinos", t.id, "progresso", pid));
         if (progDoc.exists()) {
           const doneArr = progDoc.data().done || [];
-          if (t.totalEx > 0 && doneArr.length === t.totalEx) {
-            finalizados.push({ id: t.id, titulo: t.titulo });
+          if (doneArr.length > 0) {
+            comProgresso.push({
+              id: t.id,
+              titulo: t.titulo,
+              feitos: doneArr.length,
+              total: t.totalEx,
+            });
           }
         }
       }
-      setConcluidosHoje(finalizados);
+      setConcluidosHoje(comProgresso);
     });
     return () => unsub();
   }, [navigate]);
@@ -103,7 +108,7 @@ export default function Home() {
                 <ul className="list-disc pl-6 space-y-1">
                   {concluidosHoje.map((t) => (
                     <li key={t.id} className="text-green-400">
-                      ✅ Concluído: <b>{t.titulo}</b>
+                      ✅ <b>{t.titulo}</b> — {t.feitos}/{t.total} exercícios concluídos
                     </li>
                   ))}
                 </ul>
