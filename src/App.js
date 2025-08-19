@@ -9,6 +9,7 @@ import AdminRoute from "./components/AdminRoute";
 import SideMenu from "./components/SideMenu";
 import Timer from "./pages/Timer";
 import Profile from "./pages/Profile";
+import Biometria from "./pages/Biometria";
 
 export default function App() {
   return (
@@ -23,9 +24,9 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/timer" element={<Timer />} />
          <Route path="/profile" element={<Profile />} />
+         <Route path="/ficha-biometrica" element={<Biometria />} />
 
         {/* placeholders (aluno) */}
-        <Route path="/ficha-biometrica" element={<div className="p-6 text-white">Ficha biométrica (em breve)</div>} />
         <Route path="/pagamentos" element={<div className="p-6 text-white">Pagamentos (em breve)</div>} />
 
         {/* treinador */}

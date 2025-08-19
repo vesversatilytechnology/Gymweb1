@@ -3,10 +3,11 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  deleteUser,
 } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useNavigate } from "react-router-dom";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -23,15 +24,12 @@ export default function Auth() {
   };
 
   async function afterLoginRedirect(uid) {
-    // consulta papel
     const roleSnap = await getDoc(doc(db, "userRoles", uid));
     const role = roleSnap.exists() ? roleSnap.data()?.role : "student";
 
     if (role === "trainer") {
-      // treinador vai para a lista de alunos (ou para onde você preferir)
       navigate("/admin/alunos", { replace: true });
     } else {
-      // aluno vai para a tela de início
       navigate("/home", { replace: true });
     }
   }
@@ -55,34 +53,67 @@ export default function Auth() {
     }
   };
 
+  // >>>>>>> CADASTRO CORRIGIDO <<<<<<<
   const handleCadastro = async () => {
     limparMensagens();
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, senha);
 
-      // cria perfil e marca papel padrão = student
-      const uid = cred.user.uid;
-      await Promise.all([
-        setDoc(doc(db, "profiles", uid), {
-          uid,
-          nome: nome || "",
-          nomeLower: (nome || "").toLowerCase(),
-          email,
-          emailLower: email.toLowerCase(),
-          createdAt: new Date(),
-        }),
-        setDoc(doc(db, "userRoles", uid), { role: "student" }),
-      ]);
+    let userCreated = null;
+    try {
+      // 1) Cria usuário no Auth
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        senha
+      );
+      userCreated = cred.user;
+      await userCreated.getIdToken(true); // garante token carregado
+      const uid = userCreated.uid;
+
+      // 2) Grava perfil (obrigatório)
+      await setDoc(doc(db, "profiles", uid), {
+        uid,
+        nome: (nome || "").trim(),
+        nomeLower: (nome || "").trim().toLowerCase(),
+        email: email.trim(),
+        emailLower: email.trim().toLowerCase(),
+        createdAt: serverTimestamp(),
+      });
+
+      // 3) Garante userRoles = "student" (opcional, não bloqueia)
+      try {
+        const roleRef = doc(db, "userRoles", uid);
+        const roleSnap = await getDoc(roleRef);
+        if (!roleSnap.exists()) {
+          // CREATE (permitido pelas suas regras para o próprio usuário)
+          await setDoc(roleRef, { role: "student" }); // sem merge
+        } // se já existe, não tenta atualizar (suas regras bloqueiam update)
+      } catch (e) {
+        console.warn("[userRoles] Ignorado (sem bloquear cadastro):", e);
+      }
 
       setMensagemSucesso("Cadastro realizado! Você já pode entrar.");
       setTimeout(() => setAba("login"), 1200);
     } catch (error) {
+      // Se falhou ao gravar o perfil, desfaz o usuário recém-criado para não ficar "fantasma"
+      if (userCreated) {
+        try {
+          await deleteUser(userCreated);
+        } catch {}
+      }
+
       if (error.code === "auth/email-already-in-use") {
         setMensagemErro("Este e-mail já está cadastrado.");
       } else if (error.code === "auth/invalid-email") {
         setMensagemErro("Formato de e-mail inválido.");
       } else if (error.code === "auth/weak-password") {
         setMensagemErro("A senha deve ter pelo menos 6 caracteres.");
+      } else if (
+        error.message?.includes("Missing or insufficient permissions") ||
+        error.code === "permission-denied"
+      ) {
+        setMensagemErro(
+          "Sem permissão para salvar seus dados (regras do Firestore)."
+        );
       } else {
         setMensagemErro("Não foi possível cadastrar. Tente novamente.");
       }
@@ -118,7 +149,7 @@ export default function Auth() {
         />
       )}
 
-      {(aba !== "recuperar") && (
+      {aba !== "recuperar" && (
         <>
           <input
             type="email"
