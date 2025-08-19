@@ -85,12 +85,6 @@ export default function Home() {
             >
               Ir para treinos
             </button>
-            <button
-              onClick={() => navigate("/timer")}
-              className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded"
-            >
-              Cronômetro
-            </button>
           </div>
         </div>
 
