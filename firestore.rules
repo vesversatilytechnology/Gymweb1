@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========== Helpers ==========
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    // Lê role em /userRoles/{uid} e normaliza para minúsculas
+    function roleOf(uid) {
+      return exists(/databases/$(database)/documents/userRoles/$(uid))
+        ? lower(get(/databases/$(database)/documents/userRoles/$(uid)).data.role)
+        : "";
+    }
+
+    function isTrainer() {
+      return isLoggedIn() && roleOf(request.auth.uid) == "trainer";
+    }
+
+    // Admin master: checamos por documento em /adminMasters/{uid}
+    function isAdmin() {
+      return isLoggedIn()
+        && exists(/databases/$(database)/documents/adminMasters/$(request.auth.uid));
+    }
+
+    // Atalho comum
+    function isOwner(uid) {
+      return isLoggedIn() && request.auth.uid == uid;
+    }
+
+    // ========== PROFILES ==========
+    match /profiles/{uid} {
+      // Todos logados podem ler perfis
+      allow read: if isLoggedIn();
+
+      // Dono pode editar o próprio; treinador e admin podem editar qualquer
+      allow create, update, delete: if isOwner(uid) || isTrainer() || isAdmin();
+    }
+
+    // ========== USER ROLES ==========
+    match /userRoles/{uid} {
+      // Pode ler o próprio documento; treinadores e admins podem ler todos
+      allow read: if isOwner(uid) || isTrainer() || isAdmin();
+
+      // CRIAR:
+      // - O próprio usuário pode criar com role "student"
+      // - Admin pode criar/definir "trainer" (ou "student") para qualquer uid
+      allow create: if isLoggedIn()
+                    && request.resource.data.keys().hasOnly(['role'])
+                    && (
+                         (isOwner(uid) && lower(request.resource.data.role) == 'student')
+                         ||
+                         (isAdmin() && (lower(request.resource.data.role) in ['student','trainer']))
+                       );
+
+      // ATUALIZAR / EXCLUIR: somente Admin (treinador NÃO promove/demove)
+      allow update, delete: if isAdmin()
+                            && request.resource.data.keys().hasOnly(['role'])
+                            && lower(request.resource.data.role) in ['student','trainer'];
+    }
+
+    // ========== ADMIN MASTERS ==========
+    // Lista controlada só por admin (auto-administra).
+    match /adminMasters/{anyId} {
+      allow read: if isAdmin();          // admins podem listar/ver
+      allow create, update, delete: if isAdmin(); // somente admins mexem
+    }
+
+    // ========== EMAIL INDEX (se usar) ==========
+    match /emailIndex/{emailLower} {
+      // Apenas treinadores/admins
+      allow read, write: if isTrainer() || isAdmin();
+    }
+
+    // ========== CONSOLE DE USUÁRIOS ==========
+    match /consoleUsuarios/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ========== CATÁLOGO GLOBAL ==========
+    match /catalogoExercicios/{exercicioId} {
+      allow read: if isLoggedIn();
+      allow write: if isTrainer() || isAdmin();
+    }
+
+    // ========== DADOS POR USUÁRIO ==========
+    match /users/{userId} {
+      // Dono lê/escreve; treinador/admin também
+      allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+
+      match /treinos/{treinoId} {
+        allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+
+        match /exercicios/{exercicioId} {
+          allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+        }
+        match /itens/{itemId} {
+          allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+        }
+        match /progresso/{dateId} {
+          allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+        }
+      }
+
+      match /progresso/{dayId} {
+        allow read, write: if isOwner(userId) || isTrainer() || isAdmin();
+      }
+    }
+  }
+}
