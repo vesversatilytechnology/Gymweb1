@@ -32,6 +32,8 @@ export default function App() {
         <Route path="/profile/photo" element={<ProfilePhoto />} />
         <Route path="/profile/change-password" element={<ChangePassword />} />
         <Route path="/ficha-biometrica" element={<Biometria />} />
+        {/* alias opcional em PT-BR */}
+        <Route path="/profile/foto" element={<Navigate to="/profile/photo" replace />} />
 
         {/* placeholders (aluno) */}
 
