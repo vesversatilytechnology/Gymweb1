@@ -28,11 +28,17 @@ export default function App() {
         {/* aluno */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/timer" element={<Timer />} />
-         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/photo" element={<ProfilePhoto />} />
+        <Route path="/profile/change-password" element={<ChangePassword />} />
+        <Route path="/ficha-biometrica" element={<Biometria />} />
 
         {/* placeholders (aluno) */}
-        <Route path="/ficha-biometrica" element={<div className="p-6 text-white">Ficha biométrica (em breve)</div>} />
-        <Route path="/pagamentos" element={<div className="p-6 text-white">Pagamentos (em breve)</div>} />
+
+        <Route
+          path="/pagamentos"
+          element={<div className="p-6 text-white">Pagamentos (em breve)</div>}
+        />
 
         {/* treinador */}
         <Route

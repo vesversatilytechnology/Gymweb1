@@ -161,7 +161,7 @@ export default function Profile() {
                             Alterar foto
                         </Link>
                         <Link
-                            to="/profile/password"
+                            to="/profile/change-password"
                             className="px-3 py-2 rounded bg-slate-600 hover:bg-slate-500"
                         >
                             Alterar senha
